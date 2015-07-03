@@ -45,6 +45,7 @@ enum
 static void     g_tls_client_connection_gnutls_initable_interface_init (GInitableIface  *iface);
 
 static void g_tls_client_connection_gnutls_client_connection_interface_init (GTlsClientConnectionInterface *iface);
+static void g_tls_client_connection_gnutls_dtls_client_connection_interface_init (GDtlsClientConnectionInterface *iface);
 
 static int g_tls_client_connection_gnutls_retrieve_function (gnutls_session_t             session,
 							     const gnutls_datum_t        *req_ca_rdn,
@@ -59,7 +60,9 @@ G_DEFINE_TYPE_WITH_CODE (GTlsClientConnectionGnutls, g_tls_client_connection_gnu
 			 G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE,
 						g_tls_client_connection_gnutls_initable_interface_init)
 			 G_IMPLEMENT_INTERFACE (G_TYPE_TLS_CLIENT_CONNECTION,
-						g_tls_client_connection_gnutls_client_connection_interface_init));
+						g_tls_client_connection_gnutls_client_connection_interface_init);
+                         G_IMPLEMENT_INTERFACE (G_TYPE_DTLS_CLIENT_CONNECTION,
+                                                g_tls_client_connection_gnutls_dtls_client_connection_interface_init));
 
 struct _GTlsClientConnectionGnutlsPrivate
 {
@@ -138,7 +141,7 @@ g_tls_client_connection_gnutls_constructed (GObject *object)
 	}
       g_object_unref (remote_addr);
     }
-  g_object_unref (base_conn);
+  g_clear_object (&base_conn);
 
   if (G_OBJECT_CLASS (g_tls_client_connection_gnutls_parent_class)->constructed)
     G_OBJECT_CLASS (g_tls_client_connection_gnutls_parent_class)->constructed (object);
@@ -398,9 +401,10 @@ g_tls_client_connection_gnutls_finish_handshake (GTlsConnectionGnutls  *conn,
                                                                    (GDestroyNotify)gnutls_free,
                                                                    session_datum.data);
 
-          g_tls_backend_gnutls_store_session (GNUTLS_CLIENT,
-                                              gnutls->priv->session_id,
-                                              gnutls->priv->session_data);
+          if (gnutls->priv->session_id)
+            g_tls_backend_gnutls_store_session (GNUTLS_CLIENT,
+                                                gnutls->priv->session_id,
+                                                gnutls->priv->session_data);
         }
     }
 }
@@ -459,4 +463,10 @@ g_tls_client_connection_gnutls_initable_interface_init (GInitableIface  *iface)
   g_tls_client_connection_gnutls_parent_initable_iface = g_type_interface_peek_parent (iface);
 
   iface->init = g_tls_client_connection_gnutls_initable_init;
+}
+
+static void
+g_tls_client_connection_gnutls_dtls_client_connection_interface_init (GDtlsClientConnectionInterface *iface)
+{
+  /* Nothing here. */
 }
