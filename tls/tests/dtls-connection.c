@@ -229,7 +229,7 @@ on_rehandshake_finish (GObject        *object,
       g_clear_error (&test->server_error);
       n_sent = g_datagram_based_send_messages (test->server_connection,
                                                &message, 1,
-                                               G_SOCKET_MSG_NONE, FALSE, NULL,
+                                               G_SOCKET_MSG_NONE, 0, NULL,
                                                &test->server_error);
       g_main_context_iteration (NULL, FALSE);
     }
@@ -335,7 +335,7 @@ on_incoming_connection (GSocket       *socket,
       g_clear_error (&test->server_error);
       n_sent = g_datagram_based_send_messages (test->server_connection,
                                                &message, 1,
-                                               G_SOCKET_MSG_NONE, FALSE, NULL,
+                                               G_SOCKET_MSG_NONE, 0, NULL,
                                                &test->server_error);
       g_main_context_iteration (NULL, FALSE);
     }
@@ -416,7 +416,7 @@ read_test_data_async (TestConnection *test)
       g_clear_error (&test->read_error);
       n_read = g_datagram_based_receive_messages (test->client_connection,
                                                   &message, 1,
-                                                  G_SOCKET_MSG_NONE, FALSE,
+                                                  G_SOCKET_MSG_NONE, 0,
                                                   NULL, &test->read_error);
       g_main_context_iteration (NULL, FALSE);
     }
