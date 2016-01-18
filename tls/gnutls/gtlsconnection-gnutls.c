@@ -1555,6 +1555,16 @@ read_datagram_based_cb (GDatagramBased  *datagram_based,
   return G_SOURCE_CONTINUE;
 }
 
+static gboolean
+read_timeout_cb (gpointer user_data)
+{
+  gboolean *timed_out = user_data;
+
+  *timed_out = TRUE;
+
+  return G_SOURCE_REMOVE;
+}
+
 static int
 g_tls_connection_gnutls_pull_timeout_func (gnutls_transport_ptr_t transport_data,
                                            unsigned int ms)
@@ -1571,11 +1581,19 @@ g_tls_connection_gnutls_pull_timeout_func (gnutls_transport_ptr_t transport_data
   if (ms > 0)
     {
       GMainContext *ctx = NULL;
-      GSource *read_source;
-      gboolean read_done = FALSE;
+      GSource *read_source = NULL, *timeout_source = NULL;
+      gboolean read_done = FALSE, timed_out = FALSE;
 
       ctx = g_main_context_new ();
 
+      /* Create a timeout source. */
+      timeout_source = g_timeout_source_new (ms);
+      g_source_set_callback (timeout_source, (GSourceFunc) read_timeout_cb,
+                             &timed_out, NULL);
+
+      /* Create a read source. We cannot use g_source_set_ready_time() on this
+       * to combine it with the @timeout_source, as that could mess with the
+       * internals of the #GDatagramBased’s #GSource implementation. */
       if (gnutls->priv->base_socket != NULL)
         {
           read_source = g_datagram_based_create_source (gnutls->priv->base_socket, G_IO_IN, NULL);
@@ -1589,16 +1607,18 @@ g_tls_connection_gnutls_pull_timeout_func (gnutls_transport_ptr_t transport_data
                                  &read_done, NULL);
         }
 
-      g_source_set_ready_time (read_source, g_get_monotonic_time () + ms * 1000);
       g_source_attach (read_source, ctx);
+      g_source_attach (timeout_source, ctx);
 
-      while (!read_done)
+      while (!read_done && !timed_out)
         g_main_context_iteration (ctx, TRUE);
 
       g_source_destroy (read_source);
+      g_source_destroy (timeout_source);
 
       g_main_context_unref (ctx);
       g_source_unref (read_source);
+      g_source_unref (timeout_source);
     }
 
   /* If @read_source was dispatched due to cancellation, the resulting error
