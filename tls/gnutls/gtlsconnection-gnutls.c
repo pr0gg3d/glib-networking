@@ -1414,7 +1414,6 @@ g_tls_connection_gnutls_pull_func (gnutls_transport_ptr_t  transport_data,
 
       ret = g_datagram_based_receive_messages (gnutls->priv->base_socket,
                                                &message, 1, 0,
-                                               gnutls->priv->handshaking ? 0 :
                                                gnutls->priv->read_timeout,
                                                gnutls->priv->read_cancellable,
                                                &gnutls->priv->read_error);
